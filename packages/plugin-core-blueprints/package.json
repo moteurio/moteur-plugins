@@ -1,0 +1,28 @@
+{
+    "name":  "@moteurio/plugin-core-blueprints",
+    "version":  "2026.3.27",
+    "type":  "module",
+    "main":  "./dist/index.js",
+    "types":  "./dist/index.d.ts",
+    "exports":  {
+                    ".":  "./dist/index.js"
+                },
+    "files":  [
+                  "dist"
+              ],
+    "scripts":  {
+                    "build":  "tsc -b",
+                    "clean":  "rimraf dist",
+                    "prepublishOnly":  "pnpm run build",
+                    "test":  "vitest run --passWithNoTests"
+                },
+    "dependencies":  {
+                         "@moteurio/core":  "^2026.3.27",
+                         "@moteurio/plugin-sdk":  "^2026.3.27",
+                         "@moteurio/types":  "^2026.3.27"
+                     },
+    "license":  "MIT",
+    "publishConfig":  {
+                          "access":  "public"
+                      }
+}

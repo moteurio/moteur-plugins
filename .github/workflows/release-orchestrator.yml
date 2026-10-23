@@ -1,0 +1,45 @@
+name: Plugin Release Orchestrator
+
+on:
+  workflow_dispatch:
+    inputs:
+      expected_moteur_line:
+        description: 'Expected compatible core line (e.g. 2026.3.27)'
+        required: true
+        default: '2026.3.27'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Validate plugin release policy
+        run: node scripts/validate-plugin-release-policy.mjs
+        env:
+          EXPECTED_MOTEUR_LINE: ${{ inputs.expected_moteur_line }}
+
+      - name: Build plugin packages
+        run: pnpm -r --filter "./packages/plugin-*" run build
+
+      - name: Publish plugin packages
+        run: |
+          for dir in packages/plugin-*; do
+            echo "Publishing ${dir}"
+            (cd "$dir" && npm publish --access public)
+          done
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

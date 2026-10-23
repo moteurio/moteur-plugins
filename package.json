@@ -1,0 +1,15 @@
+{
+  "name": "moteur-plugins",
+  "private": true,
+  "scripts": {
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "release:check": "node scripts/validate-plugin-release-policy.mjs"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.9.3",
+    "vitest": "5.0.4"
+  }
+}
