@@ -1,45 +1,154 @@
 name: Plugin Release Orchestrator
 
 on:
-  workflow_dispatch:
-    inputs:
-      expected_moteur_line:
-        description: 'Expected compatible core line (e.g. 2026.10.23)'
-        required: true
-        default: '2026.10.23'
+    workflow_dispatch:
+        inputs:
+            expected_moteur_line:
+                description: 'Engine release line plugins align to (e.g. 2026.10.23)'
+                required: true
+                default: '2026.10.23'
+            release_version_override:
+                description: 'Optional plugin line override (same-day republish). Empty = expected_moteur_line'
+                required: false
+                default: ''
+
+permissions:
+    contents: read
+
+concurrency:
+    group: plugin-release-orchestrator
+    cancel-in-progress: false
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          registry-url: 'https://registry.npmjs.org'
-
-      - name: Install pnpm
-        run: npm install -g pnpm
-
-      - name: Install dependencies
-        run: pnpm install
-
-      - name: Validate plugin release policy
-        run: node scripts/validate-plugin-release-policy.mjs
+    release:
+        runs-on: ubuntu-latest
+        defaults:
+            run:
+                working-directory: moteur-plugins
         env:
-          EXPECTED_MOTEUR_LINE: ${{ inputs.expected_moteur_line }}
+            NODE_AUTH_TOKEN: ${{ secrets.NPM_STAGING_TOKEN }}
+        steps:
+            - name: Require RELEASE_PAT
+              run: |
+                  if [ -z "$RELEASE_PAT" ]; then
+                    echo "::error::Set repository secret RELEASE_PAT (push to protected branches; see RELEASING.md)."
+                    exit 1
+                  fi
+              env:
+                  RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
 
-      - name: Build plugin packages
-        run: pnpm -r --filter "./packages/plugin-*" run build
+            - name: Require NPM_STAGING_TOKEN
+              run: |
+                  if [ -z "$NPM_STAGING_TOKEN" ]; then
+                    echo "::error::Set repository secret NPM_STAGING_TOKEN (granular, Read and write stage only, @moteurio/*)."
+                    exit 1
+                  fi
+              env:
+                  NPM_STAGING_TOKEN: ${{ secrets.NPM_STAGING_TOKEN }}
 
-      - name: Publish plugin packages
-        run: |
-          for dir in packages/plugin-*; do
-            echo "Publishing ${dir}"
-            (cd "$dir" && npm publish --access public)
-          done
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+            - name: Verify RELEASE_PAT can reach GitHub
+              run: |
+                  git -c credential.helper= ls-remote \
+                    "https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git" \
+                    HEAD >/dev/null
+              env:
+                  RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+
+            - name: Resolve release line
+              run: |
+                  if [ -n "${RELEASE_VERSION}" ]; then
+                    LINE="${RELEASE_VERSION}"
+                  else
+                    LINE="${{ inputs.expected_moteur_line }}"
+                  fi
+                  echo "EXPECTED_MOTEUR_LINE=${LINE}" >> "$GITHUB_ENV"
+                  echo "Plugin release line: ${LINE}"
+              env:
+                  RELEASE_VERSION: ${{ inputs.release_version_override }}
+
+            - name: Checkout moteur-plugins
+              uses: actions/checkout@v4
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+                  path: moteur-plugins
+
+            - name: Checkout moteur (engine)
+              uses: actions/checkout@v4
+              with:
+                  repository: moteurio/moteur
+                  ref: moteur@${{ env.EXPECTED_MOTEUR_LINE }}
+                  path: moteur
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  registry-url: 'https://registry.npmjs.org'
+
+            - name: Install pnpm
+              run: npm install -g pnpm
+
+            - name: Ensure npm for staged publish
+              run: npm install -g npm@11.15
+
+            - name: Build engine packages plugins compile against
+              working-directory: moteur
+              run: |
+                  pnpm install --frozen-lockfile
+                  pnpm --filter @moteurio/types --filter @moteurio/plugin-sdk --filter @moteurio/core run build
+
+            - name: Apply release line to package.json files
+              run: node scripts/set-plugin-release-line.mjs
+              env:
+                  EXPECTED_MOTEUR_LINE: ${{ env.EXPECTED_MOTEUR_LINE }}
+
+            - name: Install dependencies
+              run: pnpm install
+
+            - name: Commit release and push
+              env:
+                  RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+              run: |
+                  set -euo pipefail
+                  AUTH_REMOTE="https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git"
+                  git config user.name "github-actions[bot]"
+                  git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+                  git config --local --unset-all http.https://github.com/.extraheader || true
+                  git config --local credential.helper ""
+                  git add packages/plugin-*/package.json pnpm-lock.yaml
+                  if git diff --cached --quiet; then
+                    echo "package.json already at release line; skipping commit"
+                  else
+                    git commit -m "chore(release): ${EXPECTED_MOTEUR_LINE}"
+                    git -c credential.helper= push "${AUTH_REMOTE}" "HEAD:refs/heads/${GITHUB_REF_NAME}"
+                  fi
+
+            - name: Tag release and push tag
+              env:
+                  RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
+              run: |
+                  set -euo pipefail
+                  AUTH_REMOTE="https://x-access-token:${RELEASE_PAT}@github.com/${GITHUB_REPOSITORY}.git"
+                  git -c credential.helper= tag -f "plugins@${EXPECTED_MOTEUR_LINE}"
+                  git -c credential.helper= push "${AUTH_REMOTE}" "refs/tags/plugins@${EXPECTED_MOTEUR_LINE}" --force
+
+            - name: Validate plugin release policy
+              run: node scripts/validate-plugin-release-policy.mjs
+              env:
+                  EXPECTED_MOTEUR_LINE: ${{ env.EXPECTED_MOTEUR_LINE }}
+
+            - name: Build plugin packages
+              run: pnpm -r --filter "./packages/plugin-*" run build
+
+            - name: Stage plugin packages on npm
+              run: |
+                  for dir in packages/plugin-*; do
+                    echo "Staging ${dir}"
+                    (cd "$dir" && npm stage publish --access public)
+                  done
+
+            - name: Approve staged packages (maintainer, outside CI)
+              run: |
+                  echo "::warning::Plugin versions are staged on npm, not live until approved."
+                  echo "https://www.npmjs.com/settings/~/packages/staged"
