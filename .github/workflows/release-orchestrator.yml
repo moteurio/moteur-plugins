@@ -22,9 +22,6 @@ concurrency:
 jobs:
     release:
         runs-on: ubuntu-latest
-        defaults:
-            run:
-                working-directory: moteur-plugins
         env:
             NODE_AUTH_TOKEN: ${{ secrets.NPM_STAGING_TOKEN }}
         steps:
@@ -99,14 +96,17 @@ jobs:
                   pnpm --filter @moteurio/types --filter @moteurio/plugin-sdk --filter @moteurio/core run build
 
             - name: Apply release line to package.json files
+              working-directory: moteur-plugins
               run: node scripts/set-plugin-release-line.mjs
               env:
                   EXPECTED_MOTEUR_LINE: ${{ env.EXPECTED_MOTEUR_LINE }}
 
             - name: Install dependencies
+              working-directory: moteur-plugins
               run: pnpm install
 
             - name: Commit release and push
+              working-directory: moteur-plugins
               env:
                   RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
               run: |
@@ -125,6 +125,7 @@ jobs:
                   fi
 
             - name: Tag release and push tag
+              working-directory: moteur-plugins
               env:
                   RELEASE_PAT: ${{ secrets.RELEASE_PAT }}
               run: |
@@ -134,14 +135,17 @@ jobs:
                   git -c credential.helper= push "${AUTH_REMOTE}" "refs/tags/plugins@${EXPECTED_MOTEUR_LINE}" --force
 
             - name: Validate plugin release policy
+              working-directory: moteur-plugins
               run: node scripts/validate-plugin-release-policy.mjs
               env:
                   EXPECTED_MOTEUR_LINE: ${{ env.EXPECTED_MOTEUR_LINE }}
 
             - name: Build plugin packages
+              working-directory: moteur-plugins
               run: pnpm -r --filter "./packages/plugin-*" run build
 
             - name: Stage plugin packages on npm
+              working-directory: moteur-plugins
               run: |
                   for dir in packages/plugin-*; do
                     echo "Staging ${dir}"
@@ -149,6 +153,7 @@ jobs:
                   done
 
             - name: Approve staged packages (maintainer, outside CI)
+              working-directory: moteur-plugins
               run: |
                   echo "::warning::Plugin versions are staged on npm, not live until approved."
                   echo "https://www.npmjs.com/settings/~/packages/staged"
