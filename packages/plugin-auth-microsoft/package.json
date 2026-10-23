@@ -1,13 +1,15 @@
 {
     "name": "@moteurio/plugin-auth-microsoft",
-    "version": "2026.10.23",
+    "version": "2026.10.23-2",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
     "exports": {
         ".": "./dist/index.js"
     },
-    "files": ["dist"],
+    "files": [
+        "dist"
+    ],
     "scripts": {
         "build": "tsc -b",
         "clean": "rimraf dist",
@@ -15,9 +17,9 @@
         "test": "vitest run --passWithNoTests"
     },
     "dependencies": {
-        "@moteurio/core": "^2026.10.23",
-        "@moteurio/plugin-sdk": "^2026.10.23",
-        "@moteurio/types": "^2026.10.23",
+        "@moteurio/core": "^2026.10.23-2",
+        "@moteurio/plugin-sdk": "^2026.10.23-2",
+        "@moteurio/types": "^2026.10.23-2",
         "express": "^4.19.2",
         "openapi-types": "^12.1.3"
     },
