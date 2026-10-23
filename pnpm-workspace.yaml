@@ -7,5 +7,4 @@ allowBuilds:
 overrides:
   "@moteurio/types": "link:../moteur/packages/types"
   "@moteurio/core": "link:../moteur/packages/core"
-  "@moteurio/ai": "link:../moteur/packages/ai"
   "@moteurio/plugin-sdk": "link:../moteur/packages/plugin-sdk"

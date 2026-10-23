@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       expected_moteur_line:
-        description: 'Expected compatible core line (e.g. 2026.3.27)'
+        description: 'Expected compatible core line (e.g. 2026.10.23)'
         required: true
-        default: '2026.3.27'
+        default: '2026.10.23'
 
 jobs:
   release:

@@ -1,6 +1,6 @@
 {
   "name": "@moteurio/plugin-geo",
-  "version": "2026.3.27",
+  "version": "2026.10.23",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -19,9 +19,9 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@moteurio/core": "^2026.3.27",
-    "@moteurio/plugin-sdk": "^2026.3.27",
-    "@moteurio/types": "^2026.3.27"
+    "@moteurio/core": "^2026.10.23",
+    "@moteurio/plugin-sdk": "^2026.10.23",
+    "@moteurio/types": "^2026.10.23"
   },
   "license": "MIT",
   "publishConfig": {

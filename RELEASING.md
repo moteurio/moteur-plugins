@@ -10,7 +10,7 @@ Use:
 
 - `.github/workflows/release-orchestrator.yml`
 - Trigger with `workflow_dispatch`.
-- Provide `expected_moteur_line` (default `2026.3.27`) to enforce compatibility with core packages (see `moteur/VERSIONING.md` in the main engine repo).
+- Provide `expected_moteur_line` (default `2026.10.23`) to enforce compatibility with core packages (see `moteur/VERSIONING.md` in the main engine repo).
 
 The workflow:
 
@@ -26,7 +26,7 @@ This enforces:
 
 - plugin packages have `publishConfig.access=public`
 - plugin packages have `prepublishOnly`
-- internal dependencies on `@moteurio/types`, `@moteurio/core`, `@moteurio/ai`, `@moteurio/plugin-sdk` match the expected line (e.g. `^2026.3.27`)
+- internal dependencies on `@moteurio/types`, `@moteurio/core`, `@moteurio/plugin-sdk` match the expected line (e.g. `^2026.10.23`)
 
 ## Rollback policy
 

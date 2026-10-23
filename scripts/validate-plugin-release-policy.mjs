@@ -3,7 +3,7 @@ import path from 'path';
 
 const root = process.cwd();
 const packagesDir = path.join(root, 'packages');
-const internalDeps = new Set(['@moteurio/types', '@moteurio/core', '@moteurio/ai', '@moteurio/plugin-sdk']);
+const internalDeps = new Set(['@moteurio/types', '@moteurio/core', '@moteurio/plugin-sdk']);
 const violations = [];
 
 const packageDirs = fs
