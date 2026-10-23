@@ -148,8 +148,9 @@ jobs:
               working-directory: moteur-plugins
               run: |
                   for dir in packages/plugin-*; do
-                    echo "Staging ${dir}"
-                    (cd "$dir" && npm stage publish --access public)
+                    name=$(node -p "require('./${dir}/package.json').name")
+                    echo "Staging ${name}"
+                    node scripts/stage-publish.mjs "$name"
                   done
 
             - name: Approve staged packages (maintainer, outside CI)
