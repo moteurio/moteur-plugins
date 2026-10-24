@@ -43,7 +43,8 @@ This enforces:
 
 - plugin packages have `publishConfig.access=public`
 - plugin packages have `prepublishOnly`
-- internal dependencies on `@moteurio/types`, `@moteurio/core`, `@moteurio/plugin-sdk` match the expected line (e.g. `^2026.10.23`)
+- `@moteurio/types`, `@moteurio/core`, `@moteurio/plugin-sdk` are peer dependencies (never `dependencies`) on the expected line (e.g. `^2026.10.23`)
+- sources import core only from `@moteurio/core/host.js`
 
 ## When to run
 

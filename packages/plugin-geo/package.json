@@ -18,7 +18,12 @@
         "test": "vitest run",
         "test:watch": "vitest"
     },
-    "dependencies": {
+    "peerDependencies": {
+        "@moteurio/core": "^2026.10.23-2",
+        "@moteurio/plugin-sdk": "^2026.10.23-2",
+        "@moteurio/types": "^2026.10.23-2"
+    },
+    "devDependencies": {
         "@moteurio/core": "^2026.10.23-2",
         "@moteurio/plugin-sdk": "^2026.10.23-2",
         "@moteurio/types": "^2026.10.23-2"

@@ -12,6 +12,15 @@ const packageDirs = fs
     .map(d => path.join(packagesDir, d.name))
     .filter(dir => fs.existsSync(path.join(dir, 'package.json')));
 
+function sourceFiles(dir) {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir, { withFileTypes: true }).flatMap(d => {
+        const full = path.join(dir, d.name);
+        if (d.isDirectory()) return sourceFiles(full);
+        return /\.(ts|tsx|js|mjs)$/.test(d.name) ? [full] : [];
+    });
+}
+
 function readJson(filePath) {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
 }
@@ -20,7 +29,7 @@ function inferMoteurLineFromPluginDeps() {
     const lines = new Set();
     for (const dir of packageDirs) {
         const pkg = readJson(path.join(dir, 'package.json'));
-        const deps = { ...(pkg.dependencies ?? {}) };
+        const deps = { ...(pkg.peerDependencies ?? {}) };
         for (const name of internalDeps) {
             const v = deps[name];
             if (typeof v !== 'string' || !v.startsWith('^')) continue;
@@ -49,7 +58,7 @@ const expectedLine = envLine || inferMoteurLineFromPluginDeps();
 for (const dir of packageDirs) {
     const packageJsonPath = path.join(dir, 'package.json');
     const pkg = readJson(packageJsonPath);
-    const deps = { ...(pkg.dependencies ?? {}) };
+    const peers = { ...(pkg.peerDependencies ?? {}) };
 
     if (!pkg.publishConfig || pkg.publishConfig.access !== 'public') {
         violations.push(`${pkg.name}: missing publishConfig.access=public`);
@@ -58,10 +67,26 @@ for (const dir of packageDirs) {
         violations.push(`${pkg.name}: missing prepublishOnly script`);
     }
 
-    for (const [name, version] of Object.entries(deps)) {
+    // One copy of the engine per host: a plugin uses the host's, so engine packages are peers.
+    for (const name of internalDeps) {
+        if (pkg.dependencies?.[name] !== undefined) {
+            violations.push(`${pkg.name}: ${name} must be a peerDependency, not a dependency`);
+        }
+    }
+    for (const [name, version] of Object.entries(peers)) {
         if (!internalDeps.has(name)) continue;
         if (typeof version !== 'string' || version !== `^${expectedLine}`) {
             violations.push(`${pkg.name}: invalid ${name} range "${version}"`);
+        }
+    }
+    // Only the documented host surface: other @moteurio/core paths are internal and may move.
+    for (const file of sourceFiles(path.join(dir, 'src'))) {
+        for (const [, sub] of fs.readFileSync(file, 'utf8').matchAll(/['"]@moteurio\/core\/([^'"]+)['"]/g)) {
+            if (sub !== 'host.js') {
+                violations.push(
+                    `${pkg.name}: ${path.relative(root, file)} imports @moteurio/core/${sub}; use @moteurio/core/host.js`
+                );
+            }
         }
     }
 }

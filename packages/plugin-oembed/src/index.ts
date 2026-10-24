@@ -5,7 +5,7 @@ import { Router } from 'express';
 import type { PluginManifest, PluginRouteContext, PluginRouteContribution } from '@moteurio/types/Plugin.js';
 import type { PluginInitContext as PluginContext } from '@moteurio/plugin-sdk';
 import type { OpenAPIV3 } from 'openapi-types';
-import { getProjectById } from '@moteurio/core/projects.js';
+import { getProjectById } from '@moteurio/core/host.js';
 import { oembedBlockSchema } from './blocks/oembed.js';
 import { resolveOembed } from './oembedResolve.js';
 

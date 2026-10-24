@@ -16,7 +16,7 @@ import {
     redirectLoginFailed,
     type PluginInitContext as PluginContext
 } from '@moteurio/plugin-sdk';
-import { loginWithProvider } from '@moteurio/core/auth.js';
+import { loginWithProvider } from '@moteurio/core/host.js';
 import type { OpenAPIV3 } from 'openapi-types';
 
 const PROVIDER = 'microsoft';

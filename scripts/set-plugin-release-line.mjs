@@ -40,16 +40,19 @@ for (const dir of packageDirs) {
         pkg.version = line;
         changed = true;
     }
-    const deps = pkg.dependencies ?? {};
-    for (const name of internalDeps) {
-        const want = `^${line}`;
-        if (deps[name] !== undefined && deps[name] !== want) {
-            deps[name] = want;
-            changed = true;
+    // The engine packages are peers (the host's own copy), and dev dependencies to build with.
+    for (const section of ['dependencies', 'peerDependencies', 'devDependencies']) {
+        const deps = pkg[section];
+        if (!deps) continue;
+        for (const name of internalDeps) {
+            const want = `^${line}`;
+            if (deps[name] !== undefined && deps[name] !== want) {
+                deps[name] = want;
+                changed = true;
+            }
         }
     }
     if (changed) {
-        pkg.dependencies = deps;
         writeJson(filePath, pkg);
         updated += 1;
         console.error(`set-plugin-release-line: ${pkg.name} -> ${line}`);
