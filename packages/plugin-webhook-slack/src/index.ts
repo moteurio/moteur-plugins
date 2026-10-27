@@ -30,7 +30,12 @@ export const manifest: PluginManifest = {
     description: 'Incoming webhook endpoint for Slack (signature verification)',
     source: 'opensource',
     kind: 'optional',
-    scope: 'global'
+    scope: 'global',
+    categories: ['webhook'],
+    contributes: {
+        api: { mounts: ['/webhooks'], openApi: true },
+        webhooks: { inbound: ['/webhooks/slack'] }
+    }
 };
 
 export function init(_ctx: PluginContext): void {}

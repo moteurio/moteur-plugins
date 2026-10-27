@@ -12,7 +12,32 @@ export const manifest: PluginManifest = {
     description: 'Built-in block types: paragraph, heading, image, spacer, quote, divider, button',
     source: 'opensource',
     kind: 'optional',
-    scope: 'project'
+    scope: 'project',
+    categories: ['content'],
+    contributes: {
+        schemas: {
+            blocks: [
+                'core/paragraph',
+                'core/heading',
+                'core/image',
+                'core/spacer',
+                'core/quote',
+                'core/divider',
+                'core/button'
+            ]
+        }
+    },
+    studio: {
+        blockTypes: [
+            'core/paragraph',
+            'core/heading',
+            'core/image',
+            'core/spacer',
+            'core/quote',
+            'core/divider',
+            'core/button'
+        ]
+    }
 };
 
 export function init(ctx: PluginContext): void {

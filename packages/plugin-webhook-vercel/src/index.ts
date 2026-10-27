@@ -25,7 +25,12 @@ export const manifest: PluginManifest = {
     description: 'Deploy hook endpoint for Vercel (signature verification)',
     source: 'opensource',
     kind: 'optional',
-    scope: 'global'
+    scope: 'global',
+    categories: ['webhook'],
+    contributes: {
+        api: { mounts: ['/webhooks'], openApi: true },
+        webhooks: { inbound: ['/webhooks/vercel'] }
+    }
 };
 
 export function init(_ctx: PluginContext): void {}
