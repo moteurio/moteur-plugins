@@ -20,3 +20,7 @@ AI providers, video hosts, storage, search, presence…) live in the private
 **`moteur-plugins-extra`** repository and are released as tarballs on its GitHub Releases for
 `api.moteur.io`, never to npm. (npm still has MIT versions `2026.3.27` of some of them; they get
 no updates.)
+
+## Documentation
+
+[Host plugins](docs/Plugins.md) covers installation, API/Studio layers, project scope, authoring and the engine SDK boundary. Runtime manuals belong to their implementation repository; private AI and presence manuals live in `moteur-plugins-extra`.
