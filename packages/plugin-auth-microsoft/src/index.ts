@@ -4,7 +4,11 @@
  * optional AUTH_MICROSOFT_TENANT (default `common`: work + personal Microsoft accounts).
  */
 import { Router } from 'express';
-import type { PluginManifest, PluginRouteContext, PluginRouteContribution } from '@moteurio/types/Plugin.js';
+import type {
+    PluginManifest,
+    PluginRouteContext,
+    PluginRouteContribution
+} from '@moteurio/types/Plugin.js';
 import {
     beginOAuth,
     completeOAuth,
@@ -12,11 +16,11 @@ import {
     emailFromOidcClaims,
     fetchOidcUserInfo,
     oauthConfig,
-    redirectAfterLogin,
+    redirectProviderSignIn,
     redirectLoginFailed,
     type PluginInitContext as PluginContext
 } from '@moteurio/plugin-sdk';
-import { loginWithProvider } from '@moteurio/core/host.js';
+import { startProviderSignIn } from '@moteurio/core/host.js';
 import type { OpenAPIV3 } from 'openapi-types';
 
 const PROVIDER = 'microsoft';
@@ -36,7 +40,12 @@ export const manifest: PluginManifest = {
     description: 'Sign in with Microsoft work or school accounts',
     source: 'opensource',
     kind: 'optional',
-    scope: 'global'
+    scope: 'global',
+    categories: ['auth'],
+    contributes: {
+        api: { mounts: ['/auth'], openApi: true },
+        auth: { providers: ['microsoft'] }
+    }
 };
 
 export function init(_ctx: PluginContext): void {}
@@ -72,20 +81,35 @@ function createMicrosoftRouter(ctx: PluginRouteContext): import('express').Route
         const code = req.query.code;
         if (typeof code !== 'string' || !code) return redirectLoginFailed(res, 'failed');
         try {
-            const tokens = await exchangeAuthorizationCode(`${microsoftBase()}/token`, config, code);
+            const tokens = await exchangeAuthorizationCode(
+                `${microsoftBase()}/token`,
+                config,
+                code
+            );
             const claims = await fetchOidcUserInfo(
                 'https://graph.microsoft.com/oidc/userinfo',
                 tokens.access_token
             );
             const email = emailFromOidcClaims(claims);
-            if (!email) return redirectLoginFailed(res, 'email');
             const sub = typeof claims.sub === 'string' ? claims.sub : '';
+            if (!sub) throw new Error('Microsoft subject is required');
             const name = typeof claims.name === 'string' ? claims.name : undefined;
-            const { token } = await loginWithProvider(
-                { auth: { microsoftSub: sub }, email, name },
-                ctx.authCallbacks?.runOnboardingForNewUser
+            const result = await startProviderSignIn(
+                {
+                    auth: { microsoftSub: sub },
+                    email: email ?? '',
+                    suggestedEmail:
+                        typeof claims.email === 'string'
+                            ? claims.email
+                            : typeof claims.preferred_username === 'string'
+                              ? claims.preferred_username
+                              : undefined,
+                    name
+                },
+                ctx.authCallbacks?.runOnboardingForNewUser,
+                { link: started.link }
             );
-            redirectAfterLogin(res, token, started.next);
+            redirectProviderSignIn(req, res, result, started.next);
         } catch (err) {
             if (err instanceof Error && err.message === 'User is not active') {
                 return redirectLoginFailed(res, 'inactive');
@@ -103,7 +127,9 @@ const openapi: Record<string, OpenAPIV3.PathItemObject> = {
         get: {
             summary: 'Redirect to Microsoft login',
             tags: ['Auth'],
-            parameters: [{ name: 'next', in: 'query', required: false, schema: { type: 'string' } }],
+            parameters: [
+                { name: 'next', in: 'query', required: false, schema: { type: 'string' } }
+            ],
             responses: { '302': { description: 'Redirect to Microsoft' } }
         }
     },

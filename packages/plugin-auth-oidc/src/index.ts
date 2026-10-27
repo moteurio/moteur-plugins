@@ -4,7 +4,11 @@
  * AUTH_OIDC_ISSUER, optional AUTH_OIDC_SCOPES (default openid email profile).
  */
 import { Router } from 'express';
-import type { PluginManifest, PluginRouteContext, PluginRouteContribution } from '@moteurio/types/Plugin.js';
+import type {
+    PluginManifest,
+    PluginRouteContext,
+    PluginRouteContribution
+} from '@moteurio/types/Plugin.js';
 import {
     beginOAuth,
     completeOAuth,
@@ -13,12 +17,11 @@ import {
     emailFromOidcClaims,
     fetchOidcUserInfo,
     oauthConfig,
-    parseJwtPayload,
-    redirectAfterLogin,
+    redirectProviderSignIn,
     redirectLoginFailed,
     type PluginInitContext as PluginContext
 } from '@moteurio/plugin-sdk';
-import { loginWithProvider } from '@moteurio/core/host.js';
+import { startProviderSignIn } from '@moteurio/core/host.js';
 import type { OpenAPIV3 } from 'openapi-types';
 
 const PROVIDER = 'oidc';
@@ -55,7 +58,12 @@ export const manifest: PluginManifest = {
     description: 'Sign in with any OIDC provider (Auth0, Okta, Keycloak, …)',
     source: 'opensource',
     kind: 'optional',
-    scope: 'global'
+    scope: 'global',
+    categories: ['auth'],
+    contributes: {
+        api: { mounts: ['/auth'], openApi: true },
+        auth: { providers: ['oidc'] }
+    }
 };
 
 export function init(_ctx: PluginContext): void {}
@@ -105,27 +113,36 @@ function createOidcRouter(ctx: PluginRouteContext): import('express').Router {
             const meta = await discovery();
             if (!meta) return redirectLoginFailed(res, 'failed');
             const tokens = await exchangeAuthorizationCode(meta.token_endpoint, config, code);
-            let claims: Record<string, unknown> = {};
-            if (meta.userinfo_endpoint) {
-                claims = await fetchOidcUserInfo(meta.userinfo_endpoint, tokens.access_token);
-            } else if (tokens.id_token) {
-                claims = parseJwtPayload(tokens.id_token) ?? {};
-            }
+            // The token endpoint's access token must authenticate a UserInfo response.
+            // Never use a decoded, unvalidated ID-token payload as identity evidence.
+            if (!meta.userinfo_endpoint) throw new Error('OIDC UserInfo endpoint is required');
+            const claims = await fetchOidcUserInfo(meta.userinfo_endpoint, tokens.access_token);
             const email = emailFromOidcClaims(claims);
-            if (!email) return redirectLoginFailed(res, 'email');
             const sub = typeof claims.sub === 'string' ? claims.sub : '';
-            const iss = typeof claims.iss === 'string' ? claims.iss : meta.issuer ?? issuerEnv() ?? 'oidc';
+            if (!sub) throw new Error('OIDC subject is required');
+            const iss = meta.issuer!;
             const name =
                 typeof claims.name === 'string'
                     ? claims.name
                     : typeof claims.given_name === 'string'
                       ? claims.given_name
                       : undefined;
-            const { token } = await loginWithProvider(
-                { auth: { oidcSub: `${iss}#${sub}` }, email, name },
-                ctx.authCallbacks?.runOnboardingForNewUser
+            const result = await startProviderSignIn(
+                {
+                    auth: { oidcSub: `${iss}#${sub}` },
+                    email: email ?? '',
+                    suggestedEmail:
+                        typeof claims.email === 'string'
+                            ? claims.email
+                            : typeof claims.preferred_username === 'string'
+                              ? claims.preferred_username
+                              : undefined,
+                    name
+                },
+                ctx.authCallbacks?.runOnboardingForNewUser,
+                { link: started.link }
             );
-            redirectAfterLogin(res, token, started.next);
+            redirectProviderSignIn(req, res, result, started.next);
         } catch (err) {
             if (err instanceof Error && err.message === 'User is not active') {
                 return redirectLoginFailed(res, 'inactive');
@@ -143,7 +160,9 @@ const openapi: Record<string, OpenAPIV3.PathItemObject> = {
         get: {
             summary: 'Redirect to OIDC login',
             tags: ['Auth'],
-            parameters: [{ name: 'next', in: 'query', required: false, schema: { type: 'string' } }],
+            parameters: [
+                { name: 'next', in: 'query', required: false, schema: { type: 'string' } }
+            ],
             responses: { '302': { description: 'Redirect to the OIDC provider' } }
         }
     },
