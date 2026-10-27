@@ -18,6 +18,15 @@ describe('@moteurio/plugin-geo', () => {
             },
             registerBlockSchema: (schema: { type: string }) => {
                 registered.push(`block:${schema.type}`);
+            },
+            registerStructureSchema: (schema: { type: string }) => {
+                registered.push(`structure:${schema.type}`);
+            },
+            registerBlueprint: (schema: { id: string }) => {
+                registered.push(`blueprint:${schema.id}`);
+            },
+            registerModelTemplate: (schema: { id: string }) => {
+                registered.push(`model:${schema.id}`);
             }
         } as unknown as PluginContext;
 
@@ -27,6 +36,9 @@ describe('@moteurio/plugin-geo', () => {
         expect(registered).toContain('field:geo/polyline');
         expect(registered).toContain('field:geo/area');
         expect(registered).toContain('block:geo/map');
+        expect(registered).toContain('structure:geo/place');
+        expect(registered).toContain('blueprint:map-site');
+        expect(registered).toContain('model:place');
     });
 
     it('exports distinct field types', () => {
