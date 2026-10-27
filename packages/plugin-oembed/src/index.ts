@@ -26,6 +26,17 @@ export const manifest: PluginManifest = {
     source: 'opensource',
     kind: 'optional',
     scope: 'project',
+    categories: ['content'],
+    contributes: {
+        api: { mounts: ['/projects'], openApi: true },
+        schemas: { blocks: ['play/oembed'] },
+        commands: { cli: ['play oembed'], mcp: ['play_oembed'] },
+        frontend: {
+            companionPackage: '@moteurio/frontend-plugin-oembed',
+            blocks: ['play/oembed'],
+            webComponents: ['moteur-oembed']
+        }
+    },
     studio: {
         companionPackage: '@moteurio/studio-plugin-oembed',
         blockTypes: ['play/oembed']
@@ -34,6 +45,17 @@ export const manifest: PluginManifest = {
 
 export function init(ctx: PluginContext): void {
     ctx.registerBlockSchema(oembedBlockSchema);
+    ctx.registerCommand({
+        group: 'play',
+        name: 'oembed',
+        summary: 'The embed for a link (YouTube, Vimeo…)',
+        args: [
+            { name: 'project', description: 'Project id', aliases: ['projectId'], in: 'none' },
+            { name: 'url', description: 'The link', required: true, positional: 0, in: 'query' }
+        ],
+        http: 'GET /projects/{project}/play/oembed/resolve',
+        readOnly: true
+    });
 }
 
 function createRouter(routeCtx: PluginRouteContext): import('express').Router {

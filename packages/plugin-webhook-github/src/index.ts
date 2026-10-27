@@ -33,7 +33,12 @@ export const manifest: PluginManifest = {
     description: 'Inbound webhooks from GitHub (X-Hub-Signature-256 verification)',
     source: 'opensource',
     kind: 'optional',
-    scope: 'global'
+    scope: 'global',
+    categories: ['webhook'],
+    contributes: {
+        api: { mounts: ['/webhooks'], openApi: true },
+        webhooks: { inbound: ['/webhooks/github'] }
+    }
 };
 
 export function init(_ctx: PluginContext): void {}

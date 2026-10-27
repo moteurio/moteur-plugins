@@ -12,7 +12,23 @@ export const manifest: PluginManifest = {
     description: 'Built-in project, model, structure, and template blueprints',
     source: 'opensource',
     kind: 'optional',
-    scope: 'project'
+    scope: 'project',
+    categories: ['content'],
+    contributes: {
+        schemas: {
+            blueprints: [
+                'blog',
+                'empty',
+                'blog-post',
+                'basic-page',
+                'seo',
+                'default',
+                'publishable',
+                'landing',
+                'article'
+            ]
+        }
+    }
 };
 
 export function init(ctx: PluginContext): void {
