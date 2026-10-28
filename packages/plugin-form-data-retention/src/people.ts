@@ -8,6 +8,7 @@ import {
 } from '@moteurio/core/host.js';
 import { appendLog } from './log.js';
 import { ACTOR } from './sweep.js';
+import { projectKey } from './secret.js';
 
 /**
  * A person asks what a project holds about them, or to be forgotten (GDPR articles 15 and 17,
@@ -78,10 +79,11 @@ export async function findPerson(projectId: string, person: Person): Promise<Fou
 /**
  * A reference for a request that says nothing by itself: the same person, asked again in this
  * project, gives the same one. So the log can prove a request was met without keeping who asked.
+ * Signed with the project's key, not a plain hash: emails and phones are few enough to guess.
  */
 export function reference(projectId: string, person: Person): string {
     const key = [person.email ?? '', person.phone ?? ''].join('|');
-    return crypto.createHash('sha256').update(`${projectId}|${key}`).digest('hex').slice(0, 16);
+    return crypto.createHmac('sha256', projectKey(projectId)).update(key).digest('hex').slice(0, 16);
 }
 
 /** What a person is given: their answers and what came with them, nothing about the team. */

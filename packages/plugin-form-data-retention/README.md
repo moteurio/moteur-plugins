@@ -25,11 +25,26 @@ Content-Type: application/json
 
 - `default` applies to every form without its own rule. `null` for a form keeps its submissions
   until someone deletes them.
-- `delete` removes a submission for good. `anonymise` keeps it for counts: only the answers in
-  `keepFields`, the date, the language, the campaign and the page without its query string. The
-  IP address, browser and referrer go.
+- `delete` removes a submission for good. `anonymise` keeps it for counts, with nothing about the
+  person. What stays is listed below, and everything else goes.
 - `forgetAddressesAfterDays` drops visitors' IP address and browser from every form after that
   many days, and keeps their answers.
+
+An anonymised submission keeps exactly this:
+
+- the answers in `keepFields`, and no other answer
+- the date it was sent, and the language it was sent in
+- the campaign's source, medium and name (not its term or content, which can be set for each
+  recipient)
+- the page it was sent from, without its query string
+- its status, when it was first read (not who read it) and, for spam, when it became spam, so it's
+  still deleted on time
+- which of the form's actions ran and whether they worked, without their error, detail or the
+  entry they made
+
+The IP address, browser, referrer, spam checks' scores and notes, and who in your team read it all
+go. A sweep looks at every submission past its days each time, so one restored from a backup or
+imported later with its first date is handled like the others.
 
 The policy runs every hour (`RETENTION_SWEEP_MINUTES`, `0` turns it off), and a minute after the
 API starts. `POST /projects/:projectId/retention/run?dryRun=1` counts what would change without
@@ -57,9 +72,11 @@ The same commands exist in the CLI and MCP: `retention show`, `retention run [--
 
 `GET /projects/:projectId/retention/log` lists each sweep (how many deleted, anonymised and
 addresses forgotten, by form), each policy change and each request (who in your team made it,
-how many submissions). A request is kept by its `reference`, a hash the same email or phone gives
-again in the same project, never by the email or phone itself. An erase leaves no copy in the
-project's activity log either.
+how many submissions). A request is kept by its `reference`, never by the email or phone itself.
+The same email or phone gives the same reference again in the same project, and nobody can work
+one out from an email they guess: it is signed with a key of the project's, derived from the
+server's `JWT_SECRET` and never written anywhere. Changing `JWT_SECRET` gives new references from
+then on. An erase leaves no copy in the project's activity log either.
 
 Everything lives in the project's workspace, `.moteur/plugin-form-data-retention/`: never in Git.
 

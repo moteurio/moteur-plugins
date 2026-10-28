@@ -1,28 +1,17 @@
 import type { FormSubmission } from '@moteurio/types/Form.js';
 import {
     eraseSubmission,
-    getProjectJson,
     getSubmissionForProject,
     listFormsForProject,
     listSubmissionRows,
-    putProjectJson,
     saveSubmissionForProject
 } from '@moteurio/core/host.js';
-import { readPolicy, ruleFor, STATE_KEY, type RetentionRule } from './policy.js';
+import { readPolicy, ruleFor, type RetentionRule } from './policy.js';
 import { appendLog } from './log.js';
 
 export const ACTOR = { id: 'plugin:form-data-retention', name: 'Data retention policy' };
 
 const DAY = 86_400_000;
-
-/**
- * How far each form has been handled: everything sent before `anonymisedThrough` is already
- * anonymised, and before `addressesForgottenThrough` has no address. So a sweep only opens
- * what changed since the last one.
- */
-type State = {
-    forms?: Record<string, { anonymisedThrough?: string; addressesForgottenThrough?: string }>;
-};
 
 export type FormReport = {
     deleted: number;
@@ -36,19 +25,42 @@ export type SweepReport = {
     forms: Record<string, FormReport & { rule?: RetentionRule }>;
 };
 
-/** A submission with nothing left about the person: only the kept answers, no address. */
+/**
+ * A submission with nothing left about the person, built from what may stay rather than from
+ * what must go, so a field the engine adds later stays out until it's added here: the kept
+ * answers, the date, the language, the campaign, the page without its query string, its status,
+ * when it was read, and which actions ran and whether they worked.
+ */
 export function anonymised(s: FormSubmission, rule: RetentionRule, at: string): FormSubmission {
     const keep = new Set(rule.keepFields ?? []);
     const data = Object.fromEntries(Object.entries(s.data ?? {}).filter(([k]) => keep.has(k)));
-    const { ip: _ip, userAgent: _ua, referrer: _ref, page, ...metadata } = s.metadata;
+    const { submittedAt, locale, page, campaign } = s.metadata;
+    // utm_term and utm_content can be set per recipient: only the campaign itself stays.
+    const kept = campaign && {
+        ...(campaign.source && { source: campaign.source }),
+        ...(campaign.medium && { medium: campaign.medium }),
+        ...(campaign.campaign && { campaign: campaign.campaign })
+    };
     return {
-        ...s,
+        id: s.id,
+        formId: s.formId,
+        projectId: s.projectId,
         data,
         metadata: {
-            ...metadata,
+            submittedAt,
+            ...(locale && { locale }),
+            ...(kept && Object.keys(kept).length && { campaign: kept }),
             // The page is kept for counts, without its query string (it can hold an email).
-            ...(page && { page: page.split(/[?#]/)[0] })
+            ...(page && { page: page.split(/[?#]/)[0] }),
+            ...(s.metadata.heldBy && { heldBy: s.metadata.heldBy })
         },
+        // An error or a detail can quote the address it failed to send to, an entry holds the answers.
+        actionResults: (s.actionResults ?? []).map(({ type, status }) => ({ type, status })),
+        status: s.status,
+        ...(s.readAt && { readAt: s.readAt }),
+        ...(s.statusBeforeSpam && { statusBeforeSpam: s.statusBeforeSpam }),
+        // Spam is still deleted on time.
+        ...(s.spamAt && { spamAt: s.spamAt }),
         anonymisedAt: at
     } as FormSubmission;
 }
@@ -62,24 +74,22 @@ export async function sweepProject(
     const at = new Date(now).toISOString();
     const dryRun = options.dryRun === true;
     const policy = await readPolicy(projectId);
-    const state = (await getProjectJson<State>(projectId, STATE_KEY)) ?? {};
-    const forms: NonNullable<State['forms']> = { ...state.forms };
     const report: SweepReport = { at, dryRun, forms: {} };
 
     for (const form of await listFormsForProject(projectId)) {
         const rule = ruleFor(policy, form.id);
         const forgetDays = policy.forgetAddressesAfterDays;
         if (!rule && forgetDays === undefined) continue;
-        const done = forms[form.id] ?? {};
         const counts: FormReport = { deleted: 0, anonymised: 0, addressesForgotten: 0 };
+        // Every submission past its days is looked at, each time, not only those sent since the
+        // last sweep: one restored from a backup or imported keeps its old date.
         const rows = await listSubmissionRows(projectId, form.id);
 
         const ruleCutoff = rule ? new Date(now - rule.keepDays * DAY).toISOString() : undefined;
         const handled = new Set<string>();
         if (rule && ruleCutoff) {
-            const since = rule.then === 'anonymise' ? (done.anonymisedThrough ?? '') : '';
             for (const row of rows) {
-                if (row.submittedAt >= ruleCutoff || row.submittedAt < since) continue;
+                if (row.submittedAt >= ruleCutoff) continue;
                 handled.add(row.id);
                 if (rule.then === 'delete') {
                     counts.deleted++;
@@ -91,16 +101,13 @@ export async function sweepProject(
                 counts.anonymised++;
                 if (!dryRun) await saveSubmissionForProject(anonymised(sub, rule, at));
             }
-            if (!dryRun && rule.then === 'anonymise')
-                forms[form.id] = { ...forms[form.id], anonymisedThrough: ruleCutoff };
         }
 
         if (forgetDays !== undefined) {
             const cutoff = new Date(now - forgetDays * DAY).toISOString();
-            const since = done.addressesForgottenThrough ?? '';
             for (const row of rows) {
                 if (handled.has(row.id)) continue;
-                if (row.submittedAt >= cutoff || row.submittedAt < since) continue;
+                if (row.submittedAt >= cutoff) continue;
                 const sub = await getSubmissionForProject(projectId, form.id, row.id);
                 if (!sub || (sub.metadata.ip === undefined && sub.metadata.userAgent === undefined))
                     continue;
@@ -109,15 +116,12 @@ export async function sweepProject(
                 const { ip: _ip, userAgent: _ua, ...metadata } = sub.metadata;
                 await saveSubmissionForProject({ ...sub, metadata });
             }
-            if (!dryRun)
-                forms[form.id] = { ...forms[form.id], addressesForgottenThrough: cutoff };
         }
 
         report.forms[form.id] = { ...counts, ...(rule && { rule }) };
     }
 
     if (!dryRun) {
-        await putProjectJson(projectId, STATE_KEY, { forms } satisfies State);
         const changed = Object.fromEntries(
             Object.entries(report.forms)
                 .filter(([, c]) => c.deleted || c.anonymised || c.addressesForgotten)

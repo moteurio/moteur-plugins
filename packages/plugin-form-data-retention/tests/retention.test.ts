@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import crypto from 'crypto';
 import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
@@ -8,7 +9,7 @@ import type { FormSubmission } from '@moteurio/types/Form.js';
 import { getSubmissionForProject, listSubmissionRows, putProjectJson, saveSubmissionForProject } from '@moteurio/core/host.js';
 import { checkPolicy, ruleFor } from '../src/policy.js';
 import { sweepProject } from '../src/sweep.js';
-import { checkPerson, erasePerson, exportPerson, findPerson } from '../src/people.js';
+import { checkPerson, erasePerson, exportPerson, findPerson, reference } from '../src/people.js';
 import { readLog } from '../src/log.js';
 import { writePolicy } from '../src/policy.js';
 import plugin from '../src/index.js';
@@ -20,6 +21,7 @@ const ago = (days: number) => new Date(Date.now() - days * DAY).toISOString();
 let tempDir: string;
 let projectDir: string;
 let originalDataRoot: string | undefined;
+let originalJwtSecret: string | undefined;
 
 async function form(id: string) {
     await putProjectJson(projectId, `forms/${id}/form.json`, {
@@ -78,6 +80,8 @@ beforeEach(async () => {
     );
     originalDataRoot = process.env.DATA_ROOT;
     process.env.DATA_ROOT = tempDir;
+    originalJwtSecret = process.env.JWT_SECRET;
+    process.env.JWT_SECRET = 'test-jwt-secret';
     await form('contact');
     await form('newsletter');
 });
@@ -85,6 +89,8 @@ beforeEach(async () => {
 afterEach(async () => {
     if (originalDataRoot !== undefined) process.env.DATA_ROOT = originalDataRoot;
     else delete process.env.DATA_ROOT;
+    if (originalJwtSecret !== undefined) process.env.JWT_SECRET = originalJwtSecret;
+    else delete process.env.JWT_SECRET;
     await fs.rm(tempDir, { recursive: true, force: true }).catch(() => {});
 });
 
@@ -144,8 +150,89 @@ describe('sweep', () => {
             page: 'https://site.example/contact'
         });
         expect((after as { anonymisedAt?: string }).anonymisedAt).toBeDefined();
-        // Done once: the next sweep doesn't open it again.
+        // Done once: the next sweep leaves it as it is.
         expect((await sweepProject(projectId)).forms.contact.anonymised).toBe(0);
+    });
+
+    it('anonymises everything else that could say who sent it', async () => {
+        await writePolicy(
+            projectId,
+            { forms: { contact: { keepDays: 30, then: 'anonymise', keepFields: ['topic'] } } },
+            'Louise'
+        );
+        const old: FormSubmission = {
+            id: 's900001',
+            formId: 'contact',
+            projectId,
+            data: { email: 'lise@example.com', topic: 'Sales' },
+            metadata: {
+                submittedAt: ago(40),
+                ip: '203.0.113.9',
+                userAgent: 'Firefox',
+                locale: 'fr',
+                referrer: 'https://news.example/?ref=letter',
+                page: 'https://site.example/contact?email=lise@example.com',
+                campaign: { source: 'letter', medium: 'email', campaign: 'spring', term: 'lise', content: 'lise@example.com' },
+                fillSeconds: 12,
+                recaptchaScore: 0.9,
+                screenedBy: 'spam-check',
+                screenNote: 'Looked fine for lise@example.com'
+            },
+            actionResults: [
+                { type: 'email', status: 'failed', error: '550 No such user: lise@example.com' },
+                { type: 'entry', status: 'success', entryId: 'lead-42' },
+                { type: 'sheets:append', status: 'success', detail: 'Row 42 added: lise@example.com' }
+            ],
+            status: 'processed',
+            readAt: ago(39),
+            readBy: 'Louise'
+        };
+        await saveSubmissionForProject(old);
+        await sweepProject(projectId);
+        const after = await getSubmissionForProject(projectId, 'contact', old.id);
+        expect(after).toEqual({
+            id: old.id,
+            formId: 'contact',
+            projectId,
+            data: { topic: 'Sales' },
+            metadata: {
+                submittedAt: old.metadata.submittedAt,
+                locale: 'fr',
+                campaign: { source: 'letter', medium: 'email', campaign: 'spring' },
+                page: 'https://site.example/contact'
+            },
+            actionResults: [
+                { type: 'email', status: 'failed' },
+                { type: 'entry', status: 'success' },
+                { type: 'sheets:append', status: 'success' }
+            ],
+            status: 'processed',
+            readAt: old.readAt,
+            anonymisedAt: expect.any(String)
+        });
+        expect(JSON.stringify(after)).not.toContain('lise');
+    });
+
+    it('finds a submission restored or imported after a sweep, with its old date', async () => {
+        await writePolicy(
+            projectId,
+            { forms: { contact: { keepDays: 30, then: 'anonymise' } }, forgetAddressesAfterDays: 7 },
+            'Louise'
+        );
+        const first = await sent('contact', 40, { email: 'lise@example.com' });
+        await sweepProject(projectId);
+
+        // Back from a backup as it was before, and two imported with their first dates.
+        await saveSubmissionForProject(first);
+        const imported = await sent('contact', 60, { email: 'marc@example.com' });
+        const recent = await sent('newsletter', 10, { email: 'zoe@example.com' });
+
+        const report = await sweepProject(projectId);
+        expect(report.forms.contact.anonymised).toBe(2);
+        expect(report.forms.newsletter.addressesForgotten).toBe(1);
+        for (const id of [first.id, imported.id])
+            expect((await getSubmissionForProject(projectId, 'contact', id))?.data).toEqual({});
+        expect((await getSubmissionForProject(projectId, 'newsletter', recent.id))?.metadata.ip).toBeUndefined();
     });
 
     it('forgets addresses after their days, and keeps the answers', async () => {
@@ -201,6 +288,20 @@ describe('a person’s requests', () => {
         // The same person asked again gives the same reference.
         const again = await erasePerson(projectId, checkPerson({ email: 'Lise@example.com' }), 'Louise');
         expect(again).toMatchObject({ erased: 0, reference: receipt.reference });
+    });
+
+    it('signs references with a key of the project’s, so an email can’t be guessed from one', () => {
+        const lise = checkPerson({ email: 'lise@example.com' });
+        const ref = reference(projectId, lise);
+        expect(ref).toMatch(/^[0-9a-f]{16}$/);
+        const plain = crypto.createHash('sha256').update(`${projectId}|lise@example.com|`).digest('hex');
+        expect(plain.startsWith(ref)).toBe(false);
+        expect(reference('another-project', lise)).not.toBe(ref);
+        // Without the server's secret, nobody can work one out.
+        process.env.JWT_SECRET = 'another-secret';
+        expect(reference(projectId, lise)).not.toBe(ref);
+        delete process.env.JWT_SECRET;
+        expect(() => reference(projectId, lise)).toThrow('JWT_SECRET');
     });
 });
 
