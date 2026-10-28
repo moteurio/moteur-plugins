@@ -12,6 +12,7 @@ import type {
 import {
     beginOAuth,
     completeOAuth,
+    oauthChallenge,
     exchangeAuthorizationCode,
     emailFromOidcClaims,
     fetchOidcUserInfo,
@@ -59,13 +60,16 @@ function createMicrosoftRouter(ctx: PluginRouteContext): import('express').Route
             res.status(404).json(NOT_OFFERED);
             return;
         }
+        const state = beginOAuth(req, res, PROVIDER);
         const params = new URLSearchParams({
             client_id: config.clientId,
             redirect_uri: config.redirectUri,
             response_type: 'code',
             scope: 'openid profile email User.Read',
             response_mode: 'query',
-            state: beginOAuth(req, res, PROVIDER)
+            state,
+            code_challenge: oauthChallenge(state),
+            code_challenge_method: 'S256'
         });
         res.redirect(`${microsoftBase()}/authorize?${params.toString()}`);
     });
@@ -84,7 +88,8 @@ function createMicrosoftRouter(ctx: PluginRouteContext): import('express').Route
             const tokens = await exchangeAuthorizationCode(
                 `${microsoftBase()}/token`,
                 config,
-                code
+                code,
+                started.verifier
             );
             const claims = await fetchOidcUserInfo(
                 'https://graph.microsoft.com/oidc/userinfo',
