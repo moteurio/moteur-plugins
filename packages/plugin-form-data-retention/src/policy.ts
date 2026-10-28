@@ -2,12 +2,11 @@ import { getProjectJson, putProjectJson } from '@moteurio/core/host.js';
 
 /**
  * How long a project keeps what visitors send, form by form. Kept in the project's workspace
- * (`.moteur/`, never in Git), with the plugin's state and log beside it.
+ * (`.moteur/`, never in Git), with the plugin's log beside it.
  */
 
 const DIR = '.moteur/plugin-form-data-retention/';
 export const POLICY_KEY = `${DIR}policy.json`;
-export const STATE_KEY = `${DIR}state.json`;
 export const LOG_KEY = `${DIR}log.json`;
 
 /** What happens to a submission once it's older than `keepDays`. */

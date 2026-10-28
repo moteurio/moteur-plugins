@@ -4,7 +4,7 @@ import { LOG_KEY } from './policy.js';
 /**
  * What the plugin did, newest first: proof that a policy runs and that a person's request was
  * met. It never holds what a visitor wrote, nor who they are: a request is kept by `reference`,
- * a hash only the same email or phone gives again.
+ * signed with a key the log doesn't hold, which only the same email or phone gives again.
  */
 export type LogEntry =
     | {
