@@ -12,6 +12,7 @@ import type {
 import {
     beginOAuth,
     completeOAuth,
+    oauthChallenge,
     discoverOidcIssuer,
     exchangeAuthorizationCode,
     emailFromOidcClaims,
@@ -89,12 +90,15 @@ function createOidcRouter(ctx: PluginRouteContext): import('express').Router {
             res.status(404).json({ error: 'AUTH_OIDC_ISSUER is not set.' });
             return;
         }
+        const state = beginOAuth(req, res, PROVIDER);
         const params = new URLSearchParams({
             client_id: config.clientId,
             redirect_uri: config.redirectUri,
             response_type: 'code',
             scope: scopes(),
-            state: beginOAuth(req, res, PROVIDER)
+            state,
+            code_challenge: oauthChallenge(state),
+            code_challenge_method: 'S256'
         });
         res.redirect(`${meta.authorization_endpoint}?${params.toString()}`);
     });
@@ -112,7 +116,12 @@ function createOidcRouter(ctx: PluginRouteContext): import('express').Router {
         try {
             const meta = await discovery();
             if (!meta) return redirectLoginFailed(res, 'failed');
-            const tokens = await exchangeAuthorizationCode(meta.token_endpoint, config, code);
+            const tokens = await exchangeAuthorizationCode(
+                meta.token_endpoint,
+                config,
+                code,
+                started.verifier
+            );
             // The token endpoint's access token must authenticate a UserInfo response.
             // Never use a decoded, unvalidated ID-token payload as identity evidence.
             if (!meta.userinfo_endpoint) throw new Error('OIDC UserInfo endpoint is required');

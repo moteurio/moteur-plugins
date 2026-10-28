@@ -11,6 +11,7 @@ import type {
 import {
     beginOAuth,
     completeOAuth,
+    oauthChallenge,
     oauthConfig,
     redirectProviderSignIn,
     redirectLoginFailed,
@@ -46,11 +47,14 @@ function createGitHubRouter(ctx: PluginRouteContext): import('express').Router {
             res.status(404).json(NOT_OFFERED);
             return;
         }
+        const state = beginOAuth(req, res, 'github');
         const params = new URLSearchParams({
             client_id: config.clientId,
             redirect_uri: config.redirectUri,
             scope: 'read:user user:email',
-            state: beginOAuth(req, res, 'github')
+            state,
+            code_challenge: oauthChallenge(state),
+            code_challenge_method: 'S256'
         });
         res.redirect(`https://github.com/login/oauth/authorize?${params.toString()}`);
     });
@@ -72,6 +76,7 @@ function createGitHubRouter(ctx: PluginRouteContext): import('express').Router {
                     client_id: config.clientId,
                     client_secret: config.clientSecret,
                     code,
+                    code_verifier: started.verifier,
                     redirect_uri: config.redirectUri
                 },
                 { headers: { Accept: 'application/json' } }
