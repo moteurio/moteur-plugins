@@ -45,6 +45,12 @@ export const manifest: PluginManifest = {
 
 export function init(ctx: PluginContext): void {
     ctx.registerBlockSchema(oembedBlockSchema);
+    // Sites get the embed with the block, worked out once per change: no call from the page.
+    ctx.registerBlockDelivery('play/oembed', async (data, { projectId }) => {
+        const url = typeof data.url === 'string' ? data.url.trim() : '';
+        if (!url || !(await enabled(projectId))) return data;
+        return { ...data, embed: await resolveOembed(url) };
+    });
     ctx.registerCommand({
         group: 'play',
         name: 'oembed',
@@ -90,7 +96,12 @@ const openapi: Record<string, OpenAPIV3.PathItemObject> = {
             tags: ['Play'],
             parameters: [
                 { name: 'projectId', in: 'path', required: true, schema: { type: 'string' } },
-                { name: 'url', in: 'query', required: true, schema: { type: 'string', format: 'uri' } }
+                {
+                    name: 'url',
+                    in: 'query',
+                    required: true,
+                    schema: { type: 'string', format: 'uri' }
+                }
             ],
             responses: {
                 '200': { description: 'oEmbed payload (html, title, thumbnail_url, …)' },
