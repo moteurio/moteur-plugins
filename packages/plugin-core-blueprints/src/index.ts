@@ -1,6 +1,7 @@
 /**
  * Optional plugin: Default core blueprints.
- * When enabled, registers built-in blueprints (blog, empty, blog-post, basic-page, seo, default template).
+ * When enabled, registers built-in blueprints: projects (blog, empty), models (person, event,
+ * product, question, testimonial, place, job opening), structures and page templates.
  */
 import type { PluginManifest } from '@moteurio/types/Plugin.js';
 import type { PluginInitContext as PluginContext } from '@moteurio/plugin-sdk';
@@ -19,8 +20,13 @@ export const manifest: PluginManifest = {
             blueprints: [
                 'blog',
                 'empty',
-                'blog-post',
-                'basic-page',
+                'person',
+                'event',
+                'product',
+                'question',
+                'testimonial',
+                'place',
+                'job-opening',
                 'seo',
                 'default',
                 'publishable',
