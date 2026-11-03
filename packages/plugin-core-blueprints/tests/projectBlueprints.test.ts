@@ -81,6 +81,16 @@ describe('the project blueprints', () => {
             expect(out.issues).toEqual([]);
         });
 
+        it(`${blueprint.id}: imports into a project in French first, English beside it`, async () => {
+            await project(['fr', 'en']);
+            const bundle = bundleFor(blueprint, ['fr', 'en']);
+            // Every page has an address in each language: the home page's is the root, never "".
+            for (const page of bundle.pages ?? [])
+                expect(Object.values((page as { slugs?: Record<string, string> }).slugs ?? {})).not.toContain('');
+            const out = await importBundle(admin, 'p', bundle);
+            expect(out.issues).toEqual([]);
+        });
+
         it(`${blueprint.id}: imports into a project in French first, then German`, async () => {
             await project(['fr', 'de']);
             const out = await importBundle(admin, 'p', bundleFor(blueprint, ['fr', 'de']));
