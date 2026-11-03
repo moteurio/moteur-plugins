@@ -1,4 +1,5 @@
 import type { BlueprintSchema } from '@moteurio/types/Blueprint.js';
+import type { ModelSchema } from '@moteurio/types/Model.js';
 import { placeStructureSchema } from '../structures/place.js';
 
 /** Starter for a map-heavy project: a Place model and the geo/place structure. */
@@ -7,7 +8,9 @@ export const mapSiteBlueprint: BlueprintSchema = {
     name: 'Map-heavy site',
     description: 'A project starter with a Place model and geo/place structure.',
     kind: 'project',
-    template: {
+    // What a project made from it starts with: an import bundle (schemas only here).
+    bundle: {
+        version: 1,
         models: [
             {
                 id: 'place',
@@ -19,8 +22,7 @@ export const mapSiteBlueprint: BlueprintSchema = {
                     area: { type: 'geo/area', label: 'Area' }
                 }
             }
-        ],
-        layouts: [],
+        ] as ModelSchema[],
         structures: [placeStructureSchema]
     }
 };
