@@ -3,6 +3,7 @@ import type { BlueprintSchema } from '@moteurio/types/Blueprint.js';
 import type { ModelSchema } from '@moteurio/types/Model.js';
 import {
     base,
+    currencyField,
     bundle,
     collectionPage,
     contactForm,
@@ -27,6 +28,20 @@ const shared = base({
     siteName: 'Les Mardis',
     tagline: t('Talks and evenings, every other Tuesday.', 'Causeries et soirées, un mardi sur deux.'),
     footer: t('Written in Moteur.', 'Écrit dans Moteur.'),
+    fields: {
+        currency: currencyField(),
+        timeZone: [
+            {
+                type: 'core/text',
+                label: t(
+                    'Time zone of the events (e.g. America/Toronto)',
+                    'Fuseau horaire des événements (ex. America/Toronto)'
+                ),
+                options: { required: true }
+            },
+            'America/Toronto'
+        ]
+    },
     words: {
         upcoming: [t('“Upcoming” heading', 'Titre « À venir »'), t('Upcoming', 'À venir')],
         past: [t('“Past” heading', 'Titre « Passés »'), t('Past', 'Passés')],

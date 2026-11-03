@@ -3,6 +3,7 @@ import type { BlueprintSchema } from '@moteurio/types/Blueprint.js';
 import type { ModelSchema } from '@moteurio/types/Model.js';
 import {
     base,
+    currencyField,
     bundle,
     collectionPage,
     files,
@@ -27,8 +28,8 @@ const shared = base({
     siteName: 'Maison Bois',
     tagline: t('Furniture made to order, in solid wood.', 'Du mobilier sur mesure, en bois massif.'),
     footer: t('Written in Moteur.', 'Écrit dans Moteur.'),
+    fields: { currency: currencyField() },
     words: {
-        currency: [t('Currency (ISO code)', 'Devise (code ISO)'), t('CAD', 'CAD')],
         from: [t('“From” before a price', '« À partir de » avant un prix'), t('From', 'À partir de')],
         request: [t('Request button', 'Bouton de demande'), t('Ask for a quote', 'Demander une soumission')],
         specs: [t('“Specifications” heading', 'Titre « Caractéristiques »'), t('Specifications', 'Caractéristiques')]

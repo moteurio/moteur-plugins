@@ -97,6 +97,7 @@ export const BLOCKS = ['hero', 'text', 'picture', 'form'];
 /** The interface's words every site needs; a blueprint adds its own. */
 const BASE_WORDS: Record<string, [Words, Words]> = {
     menuLabel: [t('Menu label', 'Nom du menu'), t('Main menu', 'Menu principal')],
+    footerMenuLabel: [t('Footer menu label', 'Nom du menu du pied de page'), t('More', 'Plus')],
     languagesLabel: [t('Languages label', 'Nom du choix de langue'), t('Languages', 'Langues')],
     readMore: [t('“Read more” link', 'Lien « Lire la suite »'), t('Read more', 'Lire la suite')],
     notTranslated: [
@@ -117,6 +118,8 @@ type BaseOptions = {
     footer: Words;
     /** Words of the blueprint's own views: field id → [its label, its value]. */
     words?: Record<string, [Words, Words]>;
+    /** Site-wide settings that aren't words (a currency, a time zone): field id → [the field, its value]. */
+    fields?: Record<string, [Field, unknown]>;
     /** The block types a page may stack (default: hero, text, picture, form). */
     blocks?: string[];
 };
@@ -211,7 +214,8 @@ export function base(options: BaseOptions): {
                     footer: text(t('Footer', 'Pied de page')),
                     ...Object.fromEntries(
                         Object.entries(words).map(([id, [label]]) => [id, text(label, { required: true })])
-                    )
+                    ),
+                    ...Object.fromEntries(Object.entries(options.fields ?? {}).map(([id, [field]]) => [id, field]))
                 }
             }
         ],
@@ -239,7 +243,8 @@ export function base(options: BaseOptions): {
                 siteName: options.siteName,
                 tagline: options.tagline,
                 footer: options.footer,
-                ...Object.fromEntries(Object.entries(words).map(([id, [, value]]) => [id, value]))
+                ...Object.fromEntries(Object.entries(words).map(([id, [, value]]) => [id, value])),
+                ...Object.fromEntries(Object.entries(options.fields ?? {}).map(([id, [, value]]) => [id, value]))
             }
         }
     };
@@ -425,3 +430,13 @@ export function bundle(
         ...(own.menus && { menus: own.menus })
     };
 }
+
+/** The currency prices are in, for the whole site. */
+export const currencyField = (code = 'CAD'): [Field, unknown] => [
+    {
+        type: 'core/text',
+        label: t('Currency (ISO code: CAD, EUR, USD)', 'Devise (code ISO : CAD, EUR, USD)'),
+        options: { required: true, minLength: 3, maxLength: 3 }
+    },
+    code
+];

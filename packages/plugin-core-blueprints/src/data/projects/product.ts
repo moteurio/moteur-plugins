@@ -3,6 +3,7 @@ import type { BlueprintSchema } from '@moteurio/types/Blueprint.js';
 import type { ModelSchema } from '@moteurio/types/Model.js';
 import {
     base,
+    currencyField,
     bundle,
     contactForm,
     files,
@@ -25,9 +26,9 @@ const shared = base({
     siteName: 'Tally',
     tagline: t('Time tracking a team actually fills in.', 'Le suivi du temps qu’une équipe remplit vraiment.'),
     footer: t('Written in Moteur.', 'Écrit dans Moteur.'),
+    fields: { currency: currencyField() },
     words: {
         perMonth: [t('“Per month” after a price', '« Par mois » après un prix'), t('per month', 'par mois')],
-        currency: [t('Currency (ISO code)', 'Devise (code ISO)'), t('CAD', 'CAD')],
         choose: [t('Plan button', 'Bouton des forfaits'), t('Choose', 'Choisir')]
     }
 });

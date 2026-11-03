@@ -3,6 +3,7 @@ import type { BlueprintSchema } from '@moteurio/types/Blueprint.js';
 import type { ModelSchema } from '@moteurio/types/Model.js';
 import {
     base,
+    currencyField,
     bundle,
     files,
     homePage,
@@ -22,10 +23,10 @@ const shared = base({
     siteName: 'Café Rivière',
     tagline: t('Breakfast and lunch by the water.', 'Déjeuners et dîners au bord de l’eau.'),
     footer: t('Written in Moteur.', 'Écrit dans Moteur.'),
+    fields: { currency: currencyField() },
     words: {
         hours: [t('“Opening hours” heading', 'Titre « Heures d’ouverture »'), t('Opening hours', 'Heures d’ouverture')],
         closed: [t('Closed', 'Fermé'), t('Closed', 'Fermé')],
-        currency: [t('Currency (ISO code)', 'Devise (code ISO)'), t('CAD', 'CAD')],
         vegetarian: [t('Vegetarian mark', 'Mention végétarienne'), t('Vegetarian', 'Végétarien')]
     }
 });

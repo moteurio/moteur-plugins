@@ -30,6 +30,7 @@ const shared = base({
     words: {
         client: [t('“Client” label', 'Libellé « Client »'), t('Client', 'Client')],
         year: [t('“Year” label', 'Libellé « Année »'), t('Year', 'Année')],
+        services: [t('“Services” label', 'Libellé « Services »'), t('Services', 'Services')],
         nextProject: [t('Link to the next project', 'Lien vers le projet suivant'), t('Next project', 'Projet suivant')]
     }
 });
@@ -190,7 +191,7 @@ export const portfolioBlueprint: BlueprintSchema = {
                         year: 2026,
                         summary: t('Signs, bags and a counter.', 'Enseigne, sacs et comptoir.'),
                         cover: pic('catalog'),
-                        gallery: [pic('catalog'), pic('portfolio')],
+                        gallery: [pic('portfolio'), pic('site')],
                         body: paragraphs(
                             ['Tell the project: the brief, the work, the result.'],
                             ['Racontez le projet : la demande, le travail, le résultat.']
