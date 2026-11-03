@@ -8,13 +8,14 @@
         ".": "./dist/index.js"
     },
     "files": [
-        "dist"
+        "dist",
+        "files"
     ],
     "scripts": {
         "build": "tsc -b",
         "clean": "rimraf dist",
         "prepublishOnly": "pnpm run build",
-        "test": "vitest run --passWithNoTests"
+        "test": "vitest run"
     },
     "peerDependencies": {
         "@moteurio/core": "^2026.10.31",

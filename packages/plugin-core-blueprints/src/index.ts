@@ -1,6 +1,7 @@
 /**
  * Optional plugin: Default core blueprints.
- * When enabled, registers built-in blueprints: projects (blog, empty), models (person, event,
+ * When enabled, registers built-in blueprints: projects (site, business, product, blog, portfolio,
+ * restaurant, events, catalog, empty), models (person, event,
  * product, question, testimonial, place, job opening), structures and page templates.
  */
 import type { PluginManifest } from '@moteurio/types/Plugin.js';
