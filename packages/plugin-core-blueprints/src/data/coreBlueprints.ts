@@ -3,38 +3,11 @@
  * so listBlueprints() / getBlueprint() return them.
  */
 import type { BlueprintSchema } from '@moteurio/types/Blueprint.js';
+import { projectBlueprints } from './projects/index.js';
 
 export const defaultCoreBlueprints: BlueprintSchema[] = [
-    {
-        id: 'blog',
-        name: 'Blog',
-        description: 'A simple blog with a Post model and a basic page template.',
-        kind: 'project',
-        template: {
-            models: [
-                {
-                    id: 'post',
-                    label: 'Post',
-                    description: 'Blog post entry',
-                    modelType: 'content',
-                    fields: {
-                        title: { type: 'core/text', label: 'Title', options: { multilingual: true } },
-                        excerpt: { type: 'core/text', label: 'Excerpt', options: { multilingual: true, ui: 'textarea' } },
-                        body: { type: 'core/rich-text', label: 'Body', options: { multilingual: true } }
-                    }
-                }
-            ],
-            layouts: [],
-            structures: []
-        }
-    },
-    {
-        id: 'empty',
-        name: 'Empty project',
-        description: 'Empty project with no models, layouts, or structures.',
-        kind: 'project',
-        template: { models: [], layouts: [], structures: [] }
-    },
+    // What a new project can start with (see ./projects).
+    ...projectBlueprints,
     {
         id: 'person',
         name: 'Person',
