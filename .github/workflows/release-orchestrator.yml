@@ -83,8 +83,8 @@ jobs:
                   node-version: '22'
                   registry-url: 'https://registry.npmjs.org'
 
-            - name: Install pnpm
-              run: npm install -g pnpm
+            - name: Install pnpm 11 (the lockfile is in its format)
+              run: npm install -g pnpm@11
 
             - name: Ensure npm for staged publish
               run: npm install -g npm@11.15
