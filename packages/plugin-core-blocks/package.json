@@ -1,6 +1,6 @@
 {
     "name": "@moteurio/plugin-core-blocks",
-    "version": "2026.11.3",
+    "version": "2026.11.12",
     "type": "module",
     "main": "./dist/index.js",
     "types": "./dist/index.d.ts",
@@ -17,14 +17,14 @@
         "test": "vitest run --passWithNoTests"
     },
     "peerDependencies": {
-        "@moteurio/core": "^2026.11.3",
-        "@moteurio/plugin-sdk": "^2026.11.3",
-        "@moteurio/types": "^2026.11.3"
+        "@moteurio/core": "^2026.11.12",
+        "@moteurio/plugin-sdk": "^2026.11.12",
+        "@moteurio/types": "^2026.11.12"
     },
     "devDependencies": {
-        "@moteurio/core": "^2026.11.3",
-        "@moteurio/plugin-sdk": "^2026.11.3",
-        "@moteurio/types": "^2026.11.3"
+        "@moteurio/core": "^2026.11.12",
+        "@moteurio/plugin-sdk": "^2026.11.12",
+        "@moteurio/types": "^2026.11.12"
     },
     "license": "MIT",
     "publishConfig": {
